@@ -1,0 +1,13 @@
+{
+  "_comment": "orientation is the orientation of the game. It can be either 'VERTICAL' or 'HORIZONTAL'.our game default is VERTICAL; minigame.config.json dev is a configuration file for minigame development. You can use it to configure the minigame.",
+  "orientation": "VERTICAL",
+  "dev": {
+    "_comment": "clientKey is the client key of the game. before you start to debug your game, you should replace it with real clientKey, and also replace it in your index.html TTMinis.game.init",
+    "clientKey": "mg60sovblht7zzhv",
+    "name": "{{your_name}}",
+    "iconUrl": "{{your_icon_url}}",
+    "desc": "{{your_description}}",
+    "ppLink": "{{your_private_policy_url}}",
+    "tosLink": "{{your_terms_of_service_url}}"
+  }
+}

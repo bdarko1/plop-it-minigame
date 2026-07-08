@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://connect.tiktok-minis.com/game/sdk.js"></script>
+    <script>
+      window.TTMinis = TTMinis;
+      TTMinis.game.init({
+        clientKey: "mg60sovblht7zzhv",
+      });
+    </script>
+    <script src="https://connect.tiktok-minis.com/libs/eruda.js"></script>
+    <script>
+      eruda.init();
+    </script>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Plop It — Quick Flush</title>
+
+    <!--
+  TikTok Mini Games SDK — uncomment once the app is configured in the
+  Developer Portal and you have a client_key.
+  <script src="https://developers.tiktok.com/js/minis.js"></script>
+  <script>
+    TTMinis.game.init({ clientKey: 'YOUR_CLIENT_KEY' });
+  </script>
+-->
+
+    <style>
+      :root {
+        --bg-deep: #080812;
+        --bg-mid: #0d0d1a;
+        --bg-panel: #111120;
+        --green: #1d9e75;
+        --green-light: #5dcaa5;
+        --amber: #ef9f27;
+        --purple: #7f77dd;
+        --red: #e24b4a;
+        --text-dim: rgba(255, 255, 255, 0.55);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: radial-gradient(
+          circle at 50% 30%,
+          var(--bg-mid),
+          var(--bg-deep)
+        );
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        overflow: hidden;
+        touch-action: manipulation;
+        user-select: none;
+      }
+
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ---------- HUD ---------- */
+      #hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: clamp(10px, 3vw, 18px) clamp(14px, 4vw, 24px);
+        z-index: 5;
+      }
+
+      .hud-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 64px;
+      }
+      .hud-label {
+        font-size: clamp(9px, 2.4vw, 11px);
+        letter-spacing: 0.12em;
+        color: var(--text-dim);
+        text-transform: uppercase;
+      }
+      .hud-value {
+        font-size: clamp(20px, 6vw, 28px);
+        font-weight: 800;
+        color: #fff;
+        font-variant-numeric: tabular-nums;
+      }
+      #timerValue {
+        color: var(--amber);
+      }
+      #comboValue {
+        color: var(--purple);
+        transition: transform 0.12s ease;
+      }
+      #comboValue.pop {
+        transform: scale(1.35);
+      }
+
+      #debugInfo {
+        display: none;
+        position: absolute;
+        top: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.5);
+        z-index: 7;
+        text-align: center;
+        line-height: 1.4;
+        pointer-events: none;
+      }
+
+      #liveStats {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 14px 10px;
+        z-index: 5;
+      }
+      .live-chip {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        padding: 4px 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .live-chip b {
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+      .live-chip.perfect {
+        background: rgba(93, 202, 165, 0.12);
+        color: var(--green-light);
+      }
+      .live-chip.good {
+        background: rgba(239, 159, 39, 0.12);
+        color: var(--amber);
+      }
+      .live-chip.miss {
+        background: rgba(226, 75, 74, 0.12);
+        color: var(--red);
+      }
+
+      #climaxVignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 4;
+        opacity: 0;
+        background: radial-gradient(
+          circle at 50% 50%,
+          transparent 35%,
+          rgba(226, 75, 74, 0.55) 130%
+        );
+        transition: opacity 0.4s ease;
+      }
+      #climaxVignette.active {
+        animation: climaxPulse 0.6s ease-in-out infinite;
+      }
+      @keyframes climaxPulse {
+        0%,
+        100% {
+          opacity: 0.35;
+        }
+        50% {
+          opacity: 0.65;
+        }
+      }
+
+      #newBestBadge {
+        animation: bestPulse 0.7s ease-in-out infinite;
+      }
+      @keyframes bestPulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.08);
+        }
+      }
+
+      #app.shake {
+        animation: screenShake 0.18s ease;
+      }
+      @keyframes screenShake {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        25% {
+          transform: translate(-3px, 2px);
+        }
+        50% {
+          transform: translate(3px, -2px);
+        }
+        75% {
+          transform: translate(-2px, -2px);
+        }
+      }
+
+      /* ---------- Canvas ---------- */
+      #ringCanvas {
+        flex: 1;
+        width: 100%;
+        min-height: 0;
+        display: block;
+        touch-action: none;
+      }
+
+      /* ---------- Feedback text ---------- */
+      #feedback {
+        position: absolute;
+        top: 38%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.7);
+        font-size: clamp(22px, 7vw, 34px);
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 6;
+        text-shadow: 0 0 18px currentColor;
+      }
+      #feedback.show {
+        animation: feedbackPop 0.45s ease forwards;
+      }
+      @keyframes feedbackPop {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.6);
+        }
+        25% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1.15);
+        }
+        60% {
+          opacity: 1;
+          transform: translate(-50%, -55%) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -75%) scale(0.95);
+        }
+      }
+
+      /* ---------- Overlays ---------- */
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(8, 8, 18, 0.92);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        z-index: 10;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      .logo {
+        font-size: clamp(30px, 9vw, 44px);
+        font-weight: 900;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+      .logo span {
+        color: var(--green-light);
+      }
+      .record-hook {
+        font-size: clamp(13px, 3.6vw, 15px);
+        font-weight: 700;
+        color: var(--amber);
+        margin-bottom: 6px;
+        line-height: 1.4;
+        min-height: 1.4em;
+      }
+      .tagline {
+        color: var(--text-dim);
+        font-size: clamp(13px, 3.6vw, 15px);
+        margin-bottom: 28px;
+      }
+
+      .btn {
+        appearance: none;
+        border: none;
+        border-radius: 999px;
+        padding: 16px 44px;
+        font-size: clamp(15px, 4vw, 18px);
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        color: #08120e;
+        background: linear-gradient(135deg, var(--green-light), var(--green));
+        box-shadow: 0 8px 24px rgba(29, 158, 117, 0.45);
+        cursor: pointer;
+      }
+      .btn:active {
+        transform: translateY(1px) scale(0.98);
+      }
+      .btn-ghost {
+        margin-top: 14px;
+        background: none;
+        box-shadow: none;
+        color: var(--text-dim);
+        font-weight: 600;
+        padding: 8px 16px;
+        font-size: 13px;
+        text-decoration: underline;
+      }
+
+      .rules {
+        display: flex;
+        gap: 18px;
+        margin-bottom: 30px;
+      }
+      .rule-chip {
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: clamp(11px, 3vw, 13px);
+        font-weight: 700;
+      }
+      .rule-chip.perfect {
+        background: rgba(93, 202, 165, 0.15);
+        color: var(--green-light);
+        border: 1px solid rgba(93, 202, 165, 0.4);
+      }
+      .rule-chip.good {
+        background: rgba(239, 159, 39, 0.15);
+        color: var(--amber);
+        border: 1px solid rgba(239, 159, 39, 0.4);
+      }
+      .rule-chip.miss {
+        background: rgba(226, 75, 74, 0.15);
+        color: var(--red);
+        border: 1px solid rgba(226, 75, 74, 0.4);
+      }
+
+      /* ---------- Results ---------- */
+      .score-big {
+        font-size: clamp(48px, 16vw, 76px);
+        font-weight: 900;
+        color: #fff;
+        line-height: 1;
+        margin: 6px 0 4px;
+      }
+      .score-label {
+        color: var(--text-dim);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 22px;
+      }
+
+      .percentile-banner {
+        background: rgba(93, 202, 165, 0.12);
+        color: var(--green-light);
+        font-size: clamp(13px, 3.6vw, 15px);
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 10px;
+        margin: -10px 0 22px;
+      }
+
+      .stat-row {
+        display: flex;
+        gap: 22px;
+        margin-bottom: 30px;
+      }
+      .stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .stat-num {
+        font-size: clamp(20px, 6vw, 26px);
+        font-weight: 800;
+      }
+      .stat-num.perfect {
+        color: var(--green-light);
+      }
+      .stat-num.good {
+        color: var(--amber);
+      }
+      .stat-num.miss {
+        color: var(--red);
+      }
+      .stat-num.combo {
+        color: var(--purple);
+      }
+      .stat-tag {
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- HUD -->
+      <div id="hud" class="hidden">
+        <div class="hud-block">
+          <span class="hud-label">Time</span>
+          <span class="hud-value" id="timerValue">30</span>
+        </div>
+        <div class="hud-block">
+          <span class="hud-label">Score</span>
+          <span class="hud-value" id="scoreValue">0</span>
+        </div>
+        <div class="hud-block">
+          <span class="hud-label">Combo</span>
+          <span class="hud-value" id="comboValue">×1</span>
+        </div>
+      </div>
+
+      <div id="liveStats" class="hidden">
+        <span class="live-chip perfect">PERFECT <b id="livePerfect">0</b></span>
+        <span class="live-chip good">GOOD <b id="liveGood">0</b></span>
+        <span class="live-chip miss">MISS <b id="liveMiss">0</b></span>
+      </div>
+
+      <canvas id="ringCanvas"></canvas>
+      <div id="climaxVignette"></div>
+      <div id="feedback"></div>
+      <div id="debugInfo"></div>
+
+      <!-- START SCREEN -->
+      <div id="startScreen" class="overlay">
+        <div class="logo">PLOP <span>IT</span></div>
+        <div class="record-hook" id="recordHook"></div>
+        <div class="tagline">
+          Tap the ring as it crosses the inner circle. 30 seconds. Go.
+        </div>
+        <div class="rules">
+          <div class="rule-chip perfect">PERFECT</div>
+          <div class="rule-chip good">GOOD</div>
+          <div class="rule-chip miss">MISS</div>
+        </div>
+        <button class="btn" id="startBtn">Start</button>
+      </div>
+
+      <!-- END SCREEN -->
+      <div id="endScreen" class="overlay hidden">
+        <div
+          class="score-label"
+          id="newBestBadge"
+          style="display: none; color: var(--amber)"
+        >
+          ★ NEW BEST ★
+        </div>
+        <div class="score-label">Final Score</div>
+        <div class="score-big" id="finalScore">0</div>
+        <div
+          id="percentileBanner"
+          class="percentile-banner"
+          style="display: none"
+        ></div>
+        <div
+          id="saveStatus"
+          style="
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            margin: -16px 0 16px;
+            font-family: monospace;
+          "
+        ></div>
+        <div class="stat-row">
+          <div class="stat">
+            <span class="stat-num perfect" id="finalPerfect">0</span
+            ><span class="stat-tag">Perfect</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num good" id="finalGood">0</span
+            ><span class="stat-tag">Good</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num miss" id="finalMiss">0</span
+            ><span class="stat-tag">Miss</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num combo" id="finalCombo">0</span
+            ><span class="stat-tag">Max Combo</span>
+          </div>
+        </div>
+        <button class="btn" id="retryBtn">Play Again</button>
+        <button class="btn-ghost" id="followBtn">
+          Get the full game · @plopit6
+        </button>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ============ CONFIG — mirrors app/game/play.tsx exactly ============ */
+        const ROUND_SECONDS = 30; // shortened slice of the real 120s round
+        const RING_SPEED_BASE = 2.6;
+        const RING_SPEED_INCREMENT = 0.011;
+        const PANIC_THRESHOLD = 90; // real game's value — never reached in 30s, kept for reference only (see MINI_PANIC_THRESHOLD_SEC)
+        const PANIC_MULTIPLIER = 1.35;
+        const RING_OUTER = 188; // px "size" at the start of each inward sweep
+        const RING_INNER = 80; // px "size" at the bottom of the sweep
+        const RING_TARGET = 112; // static target circle
+        const PERFECT_WINDOW = 4; // px
+        const GOOD_WINDOW = 12; // px
+        const TAP_LOCKOUT_MS = 800; // global cooldown between taps, no spam
+        const PERFECT_POINTS = 10;
+        const GOOD_POINTS = 5;
+        const MAX_COMBO = 8;
+        const CLIMAX_WINDOW_SEC = 8; // last N seconds get the climax treatment (new for the mini-game — real game's panic never triggers inside a 30s round)
+        const MINI_PANIC_THRESHOLD_SEC = ROUND_SECONDS - CLIMAX_WINDOW_SEC; // 22s — adapted trigger point so panic actually happens in a short round
+        const DEBUG = /[?&]debug/i.test(location.search); // add ?debug to the URL to bring back the diagnostic readouts
+
+        const COLORS = {
+          perfect: "#5DCAA5",
+          good: "#EF9F27",
+          miss: "#E24B4A",
+          ring: "#7F77DD",
+          target: "#ffffff",
+        };
+
+        /* ============ DOM ============ */
+        const canvas = document.getElementById("ringCanvas");
+        const ctx = canvas.getContext("2d");
+        const appEl = document.getElementById("app");
+        const hud = document.getElementById("hud");
+        const liveStats = document.getElementById("liveStats");
+        const livePerfectEl = document.getElementById("livePerfect");
+        const liveGoodEl = document.getElementById("liveGood");
+        const liveMissEl = document.getElementById("liveMiss");
+        const timerEl = document.getElementById("timerValue");
+        const scoreEl = document.getElementById("scoreValue");
+        const comboEl = document.getElementById("comboValue");
+        const feedbackEl = document.getElementById("feedback");
+        const debugInfoEl = document.getElementById("debugInfo");
+        const startScreen = document.getElementById("startScreen");
+        const recordHookEl = document.getElementById("recordHook");
+        const endScreen = document.getElementById("endScreen");
+        const newBestBadge = document.getElementById("newBestBadge");
+        const percentileEl = document.getElementById("percentileBanner");
+        const saveStatusEl = document.getElementById("saveStatus");
+        const climaxEl = document.getElementById("climaxVignette");
+        const startBtn = document.getElementById("startBtn");
+        const retryBtn = document.getElementById("retryBtn");
+        const followBtn = document.getElementById("followBtn");
+
+        /* ============ STATE ============ */
+        let state = "idle"; // idle | playing | ended
+        let score = 0,
+          combo = 1,
+          maxCombo = 0;
+        let counts = { perfect: 0, good: 0, miss: 0 };
+        let bestScore = 0; // in-memory only — wire to TTMinis storage for cross-session persistence
+        let isNewBest = false;
+        let elapsedMs = 0; // counts UP, drives speed formula (matches real game)
+        let timerAcc = 0;
+        let lastFrame = 0;
+        let centerX = 0,
+          centerY = 0;
+        let audioCtx = null;
+
+        // ring sweep state
+        let leg = "in"; // "in" | "out"
+        let legStartedAt = 0; // ms timestamp
+        let legDurationMs = 0; // cycleHalfMs, shared by both legs of a cycle
+        let legFrom = RING_OUTER,
+          legTo = RING_INNER;
+        let cycleTapped = false;
+        let lastTapAt = -Infinity;
+        let lastTapDebug = "no tap yet";
+        let flashUntil = 0,
+          flashColor = COLORS.perfect;
+
+        /* ============ SETUP ============ */
+        /* ============ SOUND — tiny synth, no audio files needed ============ */
+        function ensureAudio() {
+          if (!audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) audioCtx = new AC();
+          } else if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+        }
+
+        function playTone(freq, durationMs, type, gainPeak, glideTo) {
+          if (!audioCtx) return;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type || "sine";
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          if (glideTo) {
+            osc.frequency.exponentialRampToValueAtTime(
+              glideTo,
+              audioCtx.currentTime + durationMs / 1000,
+            );
+          }
+          const peak = gainPeak || 0.18;
+          gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(
+            peak,
+            audioCtx.currentTime + 0.01,
+          );
+          gain.gain.exponentialRampToValueAtTime(
+            0.0001,
+            audioCtx.currentTime + durationMs / 1000,
+          );
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + durationMs / 1000 + 0.02);
+        }
+
+        function playHitSound(tier, comboAtHit) {
+          if (!audioCtx) return;
+          if (tier === "perfect") {
+            // bright two-note chime, pitch rises slightly with combo for escalating payoff
+            const base = 880 + comboAtHit * 30;
+            playTone(base, 90, "sine", 0.2);
+            setTimeout(() => playTone(base * 1.5, 120, "sine", 0.16), 60);
+          } else if (tier === "good") {
+            playTone(523, 100, "triangle", 0.15);
+          } else {
+            playTone(180, 160, "sawtooth", 0.12, 90); // descending buzz
+          }
+        }
+
+        function playStartSound() {
+          playTone(440, 90, "square", 0.12);
+          setTimeout(() => playTone(660, 140, "square", 0.12), 100);
+        }
+
+        function playBestSound() {
+          [523, 659, 784, 1046].forEach((f, i) => {
+            setTimeout(() => playTone(f, 150, "sine", 0.18), i * 90);
+          });
+        }
+
+        /* ============ SUPABASE — score logging + live percentile ============ */
+        const SUPABASE_URL = "https://gsvxwxdyuqlrlphwxquz.supabase.co";
+        const SUPABASE_ANON_KEY =
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdzdnh3eGR5dXFscmxwaHd4cXV6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MzU5MTAsImV4cCI6MjA5MDMxMTkxMH0.WIQoECMsIfcT-o-tNcRqc1q4MEnWEF6jkzel-UzPo5k";
+
+        async function submitScoreAndGetPercentile(
+          finalScore,
+          perfects,
+          good,
+          miss,
+          onStatus,
+        ) {
+          if (!SUPABASE_ANON_KEY) {
+            onStatus("not configured");
+            return null;
+          }
+          const headers = {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: "Bearer " + SUPABASE_ANON_KEY,
+          };
+          try {
+            onStatus("saving...");
+            const insertRes = await fetch(
+              SUPABASE_URL + "/rest/v1/mini_game_scores",
+              {
+                method: "POST",
+                headers: Object.assign(
+                  {
+                    "Content-Type": "application/json",
+                    Prefer: "return=minimal",
+                  },
+                  headers,
+                ),
+                body: JSON.stringify({
+                  score: finalScore,
+                  perfects: perfects,
+                  good: good,
+                  miss: miss,
+                }),
+              },
+            );
+            if (!insertRes.ok) {
+              const body = await insertRes.text();
+              onStatus(
+                "insert failed: " + insertRes.status + " " + body.slice(0, 80),
+              );
+              return null;
+            }
+
+            onStatus("saved — fetching total...");
+            const totalRes = await fetch(
+              SUPABASE_URL + "/rest/v1/mini_game_scores?select=id",
+              {
+                method: "HEAD",
+                headers: Object.assign({ Prefer: "count=exact" }, headers),
+              },
+            );
+            if (!totalRes.ok) {
+              onStatus("total query failed: " + totalRes.status);
+              return null;
+            }
+            const total = parseInt(
+              (totalRes.headers.get("content-range") || "0/0").split("/")[1],
+              10,
+            );
+
+            const belowRes = await fetch(
+              SUPABASE_URL +
+                "/rest/v1/mini_game_scores?select=id&score=lt." +
+                finalScore,
+              {
+                method: "HEAD",
+                headers: Object.assign({ Prefer: "count=exact" }, headers),
+              },
+            );
+            if (!belowRes.ok) {
+              onStatus("below query failed: " + belowRes.status);
+              return null;
+            }
+            const below = parseInt(
+              (belowRes.headers.get("content-range") || "0/0").split("/")[1],
+              10,
+            );
+
+            onStatus("ok — total=" + total + " below=" + below);
+            const others = total - 1; // exclude the row we just inserted ourselves
+            if (others <= 0) return 100; // first ever play — treat as the top spot
+            return Math.round((below / others) * 100);
+          } catch (err) {
+            onStatus(
+              "network error: " +
+                (err && err.message ? err.message : String(err)),
+            );
+            return null;
+          }
+        }
+
+        function resizeCanvas() {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const rect = canvas.getBoundingClientRect();
+          canvas.width = rect.width * dpr;
+          canvas.height = rect.height * dpr;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          centerX = rect.width / 2;
+          centerY = rect.height / 2;
+        }
+        window.addEventListener("resize", resizeCanvas);
+
+        function computeHalfMs(elapsedSec) {
+          const inPanic = elapsedSec >= MINI_PANIC_THRESHOLD_SEC; // adapted for a 30s round — see CONFIG note
+          const speed =
+            (RING_SPEED_BASE + RING_SPEED_INCREMENT * elapsedSec) *
+            (inPanic ? PANIC_MULTIPLIER : 1);
+          return Math.max(300, Math.round(1800 / speed));
+        }
+
+        function startCycle() {
+          cycleTapped = false;
+          const elapsedSec = elapsedMs / 1000;
+          legDurationMs = computeHalfMs(elapsedSec); // shared by both legs, same as real game
+          leg = "in";
+          legFrom = RING_OUTER;
+          legTo = RING_INNER;
+          legStartedAt = performance.now();
+        }
+
+        function resetGame() {
+          score = 0;
+          combo = 1;
+          maxCombo = 0;
+          counts = { perfect: 0, good: 0, miss: 0 };
+          elapsedMs = 0;
+          timerAcc = 0;
+          updateHud();
+          startCycle();
+        }
+
+        /* ============ GAME LOOP ============ */
+        function loop(ts) {
+          if (state !== "playing") return;
+          if (!lastFrame) lastFrame = ts;
+          const dt = ts - lastFrame;
+          lastFrame = ts;
+
+          elapsedMs += dt;
+          timerAcc += dt;
+          if (timerAcc >= 1000) {
+            timerAcc -= 1000;
+            const timeLeft = Math.max(
+              0,
+              ROUND_SECONDS - Math.floor(elapsedMs / 1000),
+            );
+            timerEl.textContent = timeLeft;
+            if (timeLeft <= CLIMAX_WINDOW_SEC && timeLeft > 0) {
+              climaxEl.classList.add("active");
+              climaxEl.style.opacity = String(1 - timeLeft / CLIMAX_WINDOW_SEC);
+            }
+            if (elapsedMs / 1000 >= ROUND_SECONDS) {
+              endRound();
+              return;
+            }
+          }
+
+          // advance the leg, switching legs / starting new cycles on its own clock,
+          // independent of taps — matches the real game's recursive runCycle()
+          const legElapsed = ts - legStartedAt;
+          if (legElapsed >= legDurationMs) {
+            if (leg === "in") {
+              leg = "out";
+              legFrom = RING_INNER;
+              legTo = RING_OUTER;
+              legStartedAt = ts;
+            } else {
+              startCycle();
+            }
+          }
+
+          draw(ts);
+          requestAnimationFrame(loop);
+        }
+
+        function currentRingValue(ts) {
+          const legElapsed = Math.min(legDurationMs, ts - legStartedAt);
+          const t = legDurationMs > 0 ? legElapsed / legDurationMs : 1;
+          return legFrom + (legTo - legFrom) * t; // linear, matches Easing.linear
+        }
+
+        function draw(ts) {
+          const rect = canvas.getBoundingClientRect();
+          ctx.clearRect(0, 0, rect.width, rect.height);
+
+          const value = currentRingValue(ts);
+          const diff = Math.abs(value - RING_TARGET);
+
+          // static target circle
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, RING_TARGET / 2, 0, Math.PI * 2);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+          ctx.stroke();
+
+          // moving ring
+          let ringColor = COLORS.ring;
+          if (diff <= PERFECT_WINDOW) ringColor = COLORS.perfect;
+          else if (diff <= GOOD_WINDOW) ringColor = COLORS.good;
+
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, Math.max(value / 2, 2), 0, Math.PI * 2);
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = ringColor;
+          ctx.shadowColor = ringColor;
+          ctx.shadowBlur = 18;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // center dot
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
+          ctx.fill();
+
+          if (performance.now() < flashUntil) {
+            ctx.fillStyle = flashColor;
+            ctx.globalAlpha = 0.08;
+            ctx.fillRect(0, 0, rect.width, rect.height);
+            ctx.globalAlpha = 1;
+          }
+
+          debugInfoEl.style.display = DEBUG ? "block" : "none";
+          if (DEBUG) {
+            debugInfoEl.textContent =
+              "leg=" +
+              leg +
+              "  value=" +
+              value.toFixed(1) +
+              "  diff=" +
+              diff.toFixed(1) +
+              "  legMs=" +
+              Math.round(legDurationMs) +
+              "\n" +
+              lastTapDebug;
+            debugInfoEl.style.whiteSpace = "pre";
+          }
+        }
+
+        /* ============ INPUT ============ */
+        function handleTap(e) {
+          if (state !== "playing") return;
+          e.preventDefault();
+          const now = performance.now();
+          if (now - lastTapAt < TAP_LOCKOUT_MS) return; // global lockout, matches real game
+          if (cycleTapped) return; // one scoring tap per cycle
+          lastTapAt = now;
+          cycleTapped = true;
+
+          const value = currentRingValue(now);
+          const dist = Math.abs(value - RING_TARGET);
+          let tier = "miss";
+          if (dist <= PERFECT_WINDOW) tier = "perfect";
+          else if (dist <= GOOD_WINDOW) tier = "good";
+
+          lastTapDebug =
+            "TAP → value=" +
+            value.toFixed(1) +
+            " dist=" +
+            dist.toFixed(1) +
+            " → " +
+            tier;
+
+          registerHit(tier);
+        }
+        canvas.addEventListener("pointerdown", handleTap);
+
+        function registerHit(tier) {
+          counts[tier] += 1;
+          const comboAtHit = combo;
+
+          if (tier === "miss") {
+            combo = 1; // matches comboRef.current = 1 on miss, not 0
+          } else {
+            const points = tier === "perfect" ? PERFECT_POINTS : GOOD_POINTS;
+            score += points * combo; // multiplier uses combo BEFORE incrementing
+            combo = Math.min(MAX_COMBO, combo + 1);
+          }
+          maxCombo = Math.max(maxCombo, combo); // compared AFTER the update, matches real order
+
+          playHitSound(tier, comboAtHit);
+          if (tier === "perfect" && comboAtHit >= 5) {
+            appEl.classList.remove("shake");
+            void appEl.offsetWidth;
+            appEl.classList.add("shake");
+          }
+
+          showFeedback(tier);
+          updateHud();
+          // NOTE: the ring keeps sweeping uninterrupted — tapping does not reset
+          // or skip the animation, exactly like the real game.
+        }
+
+        /* ============ UI ============ */
+        function showFeedback(tier) {
+          const labels = { perfect: "PERFECT", good: "GOOD", miss: "MISS" };
+          feedbackEl.textContent = labels[tier];
+          feedbackEl.style.color = COLORS[tier];
+          feedbackEl.classList.remove("show");
+          void feedbackEl.offsetWidth;
+          feedbackEl.classList.add("show");
+
+          flashColor = COLORS[tier];
+          flashUntil = performance.now() + 120;
+
+          if (tier !== "miss") {
+            comboEl.classList.remove("pop");
+            void comboEl.offsetWidth;
+            comboEl.classList.add("pop");
+          }
+        }
+
+        function updateHud() {
+          scoreEl.textContent = score;
+          comboEl.textContent = "×" + combo;
+          livePerfectEl.textContent = counts.perfect;
+          liveGoodEl.textContent = counts.good;
+          liveMissEl.textContent = counts.miss;
+        }
+
+        function startRound() {
+          ensureAudio();
+          playStartSound();
+          resetGame();
+          state = "playing";
+          lastFrame = 0;
+          startScreen.classList.add("hidden");
+          endScreen.classList.add("hidden");
+          hud.classList.remove("hidden");
+          liveStats.classList.remove("hidden");
+          climaxEl.classList.remove("active");
+          climaxEl.style.opacity = "0";
+          resizeCanvas();
+          requestAnimationFrame(loop);
+        }
+
+        function endRound() {
+          state = "ended";
+          hud.classList.add("hidden");
+          liveStats.classList.add("hidden");
+          climaxEl.classList.remove("active");
+          climaxEl.style.opacity = "0";
+
+          isNewBest = score > bestScore && score > 0;
+          if (isNewBest) bestScore = score;
+
+          document.getElementById("finalScore").textContent = score;
+          document.getElementById("finalPerfect").textContent = counts.perfect;
+          document.getElementById("finalGood").textContent = counts.good;
+          document.getElementById("finalMiss").textContent = counts.miss;
+          document.getElementById("finalCombo").textContent = maxCombo;
+          newBestBadge.style.display = isNewBest ? "block" : "none";
+          if (isNewBest) playBestSound();
+
+          updateStartHook();
+          endScreen.classList.remove("hidden");
+          notifyTikTokOfScore(score);
+
+          percentileEl.style.display = "none";
+          saveStatusEl.textContent = "";
+          saveStatusEl.style.display = DEBUG ? "block" : "none";
+          submitScoreAndGetPercentile(
+            score,
+            counts.perfect,
+            counts.good,
+            counts.miss,
+            function (msg) {
+              if (DEBUG) saveStatusEl.textContent = msg;
+            },
+          ).then(function (pct) {
+            if (pct === null || state !== "ended") return; // no data yet, or player already moved on
+            percentileEl.textContent =
+              pct >= 99
+                ? "🔥 Highest score recorded so far"
+                : "Better than " + pct + "% of players";
+            percentileEl.style.display = "block";
+          });
+        }
+
+        function updateStartHook() {
+          if (bestScore > 0) {
+            recordHookEl.innerHTML =
+              '🦁 The impossible score: <span style="color:#fff">' +
+              bestScore +
+              "</span> — nobody here has beaten it. Yet.";
+          } else {
+            recordHookEl.textContent =
+              "Nobody's set a score yet. Be the one nobody can beat.";
+          }
+        }
+
+        startBtn.addEventListener("click", startRound);
+        retryBtn.addEventListener("click", startRound);
+        followBtn.addEventListener("click", function () {
+          console.log("Follow @plopit6 tapped");
+        });
+
+        /* ============ TikTok SDK hooks (no-op until SDK is loaded) ============ */
+        function notifyLoadingComplete() {
+          if (
+            window.TTMinis &&
+            TTMinis.game &&
+            TTMinis.game.setLoadingProgress
+          ) {
+            TTMinis.game.setLoadingProgress({ progress: 1 });
+          }
+        }
+        function notifyTikTokOfScore(finalScore) {
+          if (window.TTMinis) {
+            console.log("TODO: report score to TikTok leaderboard", finalScore);
+          }
+        }
+
+        /* ============ INIT ============ */
+        resizeCanvas();
+        updateStartHook();
+        notifyLoadingComplete();
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "minis.manifest.json",
+  "resource_list": [
+    {
+      "type": "file",
+      "name": "index.html"
+    },
+    {
+      "type": "file",
+      "name": "minigame.config.json"
+    },
+    {
+      "type": "file",
+      "name": "minis.config.json"
+    },
+    {
+      "type": "file",
+      "name": "minis.manifest.json"
+    }
+  ]
+}
