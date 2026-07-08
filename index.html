@@ -1076,6 +1076,7 @@
 
         /* ============ INIT ============ */
         resizeCanvas();
+        draw(performance.now()); // paint idle frame immediately so canvas isn't blank before Start tap
         updateStartHook();
         notifyLoadingComplete();
       })();
